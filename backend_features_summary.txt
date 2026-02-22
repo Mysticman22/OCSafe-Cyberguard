@@ -1,0 +1,75 @@
+================================================================================
+              OCSAFE CYBERGUARD PRO - BACKEND ARCHITECTURE & FEATURES
+================================================================================
+
+This document outlines the current state of the OCSafe Cyberguard Pro backend architecture. It is designed to act as a highly scalable, multi-tenant enterprise cybersecurity platform. 
+
+The backend is built using a modern, asynchronous Python framework (FastAPI) and handles everything from user authentication to real-time agent telemetry and remote administrative commands.
+
+--------------------------------------------------------------------------------
+1. CORE TECHNOLOGY STACK & FOUNDATION
+--------------------------------------------------------------------------------
+* Framework: Built on FastAPI (Python). This allows us to handle thousands of concurrent OS agent connections (like heartbeats and telemetry logs) asynchronously without blocking the server.
+* Database Layer: Uses PostgreSQL as the primary relational database, accessed asynchronously via SQLAlchemy 2.0. This ensures high-performance queries for dashboards and user management.
+* Security & Hashing: Passwords and sensitive API Key secrets are hashed using bcrypt. We never store raw secrets in the database.
+
+--------------------------------------------------------------------------------
+2. MULTI-TENANT ARCHITECTURE & ROLE-BASED ACCESS CONTROL (RBAC)
+--------------------------------------------------------------------------------
+The platform is designed to support multiple client companies simultaneously (Multi-Tenancy).
+* Organizations: Every user, device, policy, and alert belongs strictly to an "Organization" (a client company). Data is siloed, meaning Company A can never query or see Company B's devices or alerts.
+* Strict Roles: 
+   - Admin (`role="admin"`): The IT Administrator for the client company. Has full read/write privileges to modify security policies, manage staff, and execute remote commands on company laptops.
+   - User (`role="user"`): Standard IT staff or managers under the company. They have read-only permissions to view the health dashboards and alert logs, but the backend explicitly blocks them (HTTP 403 Forbidden) from performing destructive actions like deleting policies or generating new API keys.
+
+--------------------------------------------------------------------------------
+3. AUTHENTICATION & REGISTRATION FLOWS
+--------------------------------------------------------------------------------
+* Admin Onboarding (`/register/admin`): A company signs up for the first time. The backend creates the new Organization record and immediately provisions the registering employee as the root Admin for that company.
+* User Onboarding (`/register/user`): Subordinate employees sign up using an existing `organization_id`. The backend deliberately hardcodes their role to "user" to prevent privilege escalation during registration.
+* Standard Login: Both roles authenticate via standard OAuth2 Password Bearer flow, receiving a secure JSON Web Token (JWT) used for subsequent API calls.
+
+--------------------------------------------------------------------------------
+4. THE OS AGENT INTEGRATION (CLIENT SOFTWARE)
+--------------------------------------------------------------------------------
+Employee laptops do not have usernames or passwords. Instead, they interact with the server autonomously in the background.
+* API Key Authentication: Admins generate an `X-API-Key` on the dashboard. This key is embedded into the installation script for the OS Agent. When the OS Agent boots up, it uses this key to securely authenticate to the backend, proving it belongs to "Company A".
+* Heartbeat System (`/{device_id}/heartbeat`): The OS Agent pings the backend every few seconds. If a laptop misses its heartbeats, the backend marks it as "Offline" on the dashboard.
+* Secure API Key Storage: When an Admin generates an API Key, the raw key is shown only once. The backend hashes the secret and stores only the hash, ensuring that even if the database is breached, the keys cannot be reverse-engineered by attackers.
+
+--------------------------------------------------------------------------------
+5. WEB DASHBOARD ANALYTICS ENDPOINTS
+--------------------------------------------------------------------------------
+The backend aggregates massive amounts of log data to provide instant health visualizations to the front end:
+* the Overall Security Score API: Evaluates the ratio of active threats to healthy devices, returning a real-time risk score out of 100 for the main gauge chart.
+* Active Threat Graphs: Generates time-series data formats (labels/data arrays) so the frontend can easily render a "Threats Detected (Last 7 Days)" line chart.
+* Device Connectivity Analytics: Calculates how many total devices are enrolled versus how many are currently checking in (online).
+* Risk Distribution: Categorizes all open alerts into Low, Medium, and High severities and packages the data specifically for rendering pie charts.
+
+--------------------------------------------------------------------------------
+6. ADVANCED COMMAND & CONTROL (ACTIVE RESPONSE)
+--------------------------------------------------------------------------------
+This is the core differentiating feature of the platform. Admins do not just monitor devices; they control them in real-time.
+* Device Action Dispatching: Admins can trigger specific payloads from the frontend. The backend creates a `DeviceAction` record in the database marked as "pending".
+* Actions Include:
+  - Isolate Device: Instantly drops the employee's laptop off the corporate network while maintaining a secure tunnel to our backend.
+  - Force Antivirus Scan: Triggers a deep file-system scan remotely.
+  - Terminate Process: Instructs the OS Agent to immediately kill a specific Malicious Process ID (PID).
+* Polling Mechanism: The OS Agent constantly hits the `/{device_id}/pending-actions` endpoint. As soon as the backend records a new Admin command, the agent downloads it, executes it on the laptop, and reports back that it was successfully completed.
+
+--------------------------------------------------------------------------------
+7. ADVANCED SECURITY POLICIES
+--------------------------------------------------------------------------------
+Admins can define company-wide rules that the backend distributes to all enrolled laptops.
+* Endpoint Configuration: Policies are heavily configurable via JSON payloads.
+* Capabilities built in:
+  - Toggle `block_usb_storage` to physically disable read/write access to external thumb drives on employee laptops to prevent data exfiltration.
+  - Establish a `dns_blacklist` array to push malicious or inappropriate URLs down to the OS Agent, directing it to modify local DNS resolution to block the websites.
+
+--------------------------------------------------------------------------------
+8. COMPLIANCE & AUDIT LOGGING
+--------------------------------------------------------------------------------
+Designed for Enterprise compliance.
+* The `AuditLog` Table: The backend acts as a strict "black box" recorder for internal staff actions. 
+* Any time an Admin does something sensitive—like deleting a security policy, revoking an API key, or commanding an employee's computer to be isolated—the backend quietly logs the Administrator's User ID, their exact action, their IP Address, and a timestamp. 
+* This provides a complete chronological readout of platform activity to protect against insider threats and satisfy compliance audits.
