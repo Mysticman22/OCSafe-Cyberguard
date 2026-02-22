@@ -65,9 +65,14 @@ class APIKey(APIKeyBase):
         from_attributes = True
 
 # --- Policy Schemas ---
+class AdvancedPolicyRules(BaseModel):
+    block_usb_storage: bool = False
+    dns_blacklist: List[str] = []
+    blocked_processes: List[str] = []
+
 class PolicyBase(BaseModel):
     name: str
-    rules: Dict[str, Any] = {}
+    rules: AdvancedPolicyRules = AdvancedPolicyRules()
 
 class PolicyCreate(PolicyBase):
     organization_id: int
@@ -76,5 +81,22 @@ class Policy(PolicyBase):
     id: int
     organization_id: int
     created_at: datetime
+    class Config:
+        from_attributes = True
+
+# --- API Action Schemas ---
+class DeviceActionBase(BaseModel):
+    action_type: str
+    payload: Optional[Dict[str, Any]] = None
+
+class DeviceActionCreate(DeviceActionBase):
+    device_id: int
+
+class DeviceAction(DeviceActionBase):
+    id: int
+    device_id: int
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime]
     class Config:
         from_attributes = True
