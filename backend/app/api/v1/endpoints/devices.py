@@ -6,8 +6,8 @@ from sqlalchemy.future import select
 
 from app.api import deps
 from app.db.session import get_db
-from app.models.core import Device, APIKey
-from app.schemas.core import Device as DeviceSchema, DeviceCreate
+from app.models.core import Device, APIKey, DeviceAction, AuditLog
+from app.schemas.core import Device as DeviceSchema, DeviceCreate, DeviceActionCreate, DeviceAction as DeviceActionSchema
 
 router = APIRouter()
 
@@ -74,3 +74,64 @@ async def list_devices(
         select(Device).where(Device.organization_id == current_user.organization_id)
     )
     return result.scalars().all()
+
+@router.post("/{device_id}/action", response_model=DeviceActionSchema)
+async def dispatch_device_action(
+    device_id: int,
+    action_in: DeviceActionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_admin = Depends(deps.get_current_admin_user)
+):
+    """
+    Admin commands a device to perform an action (e.g., isolate, scan).
+    """
+    # Verify device belongs to admin's organization
+    result = await db.execute(select(Device).where(
+        Device.id == device_id, 
+        Device.organization_id == current_admin.organization_id
+    ))
+    device = result.scalars().first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    db_action = DeviceAction(
+        device_id=device_id,
+        action_type=action_in.action_type,
+        payload=action_in.payload,
+        status="pending"
+    )
+    db.add(db_action)
+    
+    # Log the audit action
+    audit_log = AuditLog(
+        organization_id=current_admin.organization_id,
+        user_id=current_admin.id,
+        action=f"Dispatched '{action_in.action_type}' to device {device.hostname}",
+    )
+    db.add(audit_log)
+    
+    await db.commit()
+    await db.refresh(db_action)
+    return db_action
+
+@router.get("/{device_id}/pending-actions", response_model=List[DeviceActionSchema])
+async def get_pending_actions(
+    device_id: int,
+    db: AsyncSession = Depends(get_db),
+    api_key: APIKey = Depends(deps.verify_api_key_dependency)
+):
+    """
+    OS Agent fetches actions it needs to execute.
+    """
+    result = await db.execute(select(Device).where(
+        Device.id == device_id,
+        Device.organization_id == api_key.organization_id
+    ))
+    if not result.scalars().first():
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    actions = await db.execute(select(DeviceAction).where(
+        DeviceAction.device_id == device_id,
+        DeviceAction.status == "pending"
+    ))
+    return actions.scalars().all()
