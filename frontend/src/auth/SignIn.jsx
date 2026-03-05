@@ -1,23 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { loginUser, saveToken } from '../api/auth';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!email.trim()) {
       setError('Please enter your email address.');
-      return;
-    }
-    if (!email.endsWith('@gmail.com')) {
-      setError('Email must be a valid @gmail.com address.');
       return;
     }
 
@@ -27,11 +25,19 @@ export default function SignIn() {
       return;
     }
 
-    setSuccess(true);
-    setTimeout(() => {
-      // Navigate to dashboard after success
-      window.location.href = '/dashboard';
-    }, 2000);
+    setLoading(true);
+    try {
+      const data = await loginUser(email, password);
+      saveToken(data.access_token);
+      setSuccess(true);
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 2000);
+    } catch (err) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* Success state */
@@ -177,9 +183,10 @@ export default function SignIn() {
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full py-4 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-2"
+                disabled={loading}
+                className="w-full py-4 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Sign In
+                {loading ? 'Authenticating...' : 'Sign In'}
               </button>
             </form>
 

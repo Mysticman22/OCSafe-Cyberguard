@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { registerUser } from '../api/auth';
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -13,6 +14,7 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const departments = ['Engineering', 'Security Operations', 'IT Administration', 'Management', 'Human Resources', 'Finance'];
   const positions = {
@@ -32,7 +34,7 @@ export default function SignUp() {
     });
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -63,7 +65,19 @@ export default function SignUp() {
       return;
     }
 
-    setSuccess(true);
+    setLoading(true);
+    try {
+      await registerUser({
+        email: form.email,
+        password: form.password,
+        organization_id: null,
+      });
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* Success */
@@ -267,9 +281,10 @@ export default function SignUp() {
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full py-4 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-2"
+                disabled={loading}
+                className="w-full py-4 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Create Account
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
 
