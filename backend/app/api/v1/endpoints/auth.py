@@ -6,12 +6,25 @@ from sqlalchemy.future import select
 
 from app.core.config import settings
 from app.core import security
+from app.api import deps
 from app.db.session import get_db
 from app.models.core import User, Organization
 from app.schemas.core import UserCreate, User as UserSchema, OrganizationCreate
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
+
+@router.get("/me")
+async def get_current_user_info(
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """Return current user info including role for frontend routing."""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role,
+        "organization_id": current_user.organization_id,
+    }
 
 @router.post("/login/access-token", response_model=dict)
 async def login_access_token(

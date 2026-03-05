@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { loginUser, saveToken } from '../api/auth';
+import { loginUser, saveToken, getCurrentUser } from '../api/auth';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -30,8 +30,14 @@ export default function SignIn() {
       const data = await loginUser(email, password);
       saveToken(data.access_token);
       setSuccess(true);
+      // Fetch user role and redirect accordingly
+      const user = await getCurrentUser();
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        if (user && user.role === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/user/dashboard';
+        }
       }, 2000);
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');

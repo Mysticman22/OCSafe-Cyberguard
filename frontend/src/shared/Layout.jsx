@@ -20,12 +20,12 @@ export default function Layout({ children, isDarkMode, toggleDarkMode }) {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Threats', path: '/threats', icon: AlertOctagon },
-    { name: 'Users', path: '/users', icon: Users },
-    { name: 'Reports', path: '/reports', icon: FileText },
-    { name: 'Help & Support', path: '/support', icon: HelpCircle },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { name: 'Threats', path: '/admin/threats', icon: AlertOctagon },
+    { name: 'Users', path: '/admin/users', icon: Users },
+    { name: 'Reports', path: '/admin/reports', icon: FileText },
+    { name: 'Help & Support', path: '/admin/support', icon: HelpCircle },
+    { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
   return (
