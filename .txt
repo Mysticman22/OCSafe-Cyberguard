@@ -1,0 +1,2 @@
+Terminal 1: cd c:\OCPL\backend uvicorn app.main:app --reload
+Terminal 2: cd c:\OCPL\frontend  npm run dev
