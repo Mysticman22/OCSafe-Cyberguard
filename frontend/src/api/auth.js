@@ -25,7 +25,12 @@ export async function registerUser({ email, password, organization_id }) {
         body: JSON.stringify({ email, password, role: 'user', organization_id: organization_id || null }),
     });
 
-    const data = await res.json();
+    let data;
+    try {
+        data = await res.json();
+    } catch {
+        throw new Error('Server error. Please try again later.');
+    }
     if (!res.ok) throw new Error(data.detail || 'Registration failed');
     return data;
 }
