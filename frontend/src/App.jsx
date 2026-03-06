@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { isAuthenticated, getCurrentUser, clearToken } from './api/auth';
 
-// General Auth
+// General Auth & Public
+import Landing from './pages/Landing';
 import SignIn from './auth/SignIn';
 import SignUp from './auth/SignUp';
 
@@ -147,8 +148,10 @@ function App() {
         </ProtectedRoute>
       } />
 
-      {/* Role-based redirect from root */}
-      <Route path="/" element={<RoleBasedRedirect />} />
+      {/* Public Pages */}
+      <Route path="/" element={<Landing />} />
+
+      {/* Role-based redirect helper */}
       <Route path="/dashboard" element={<RoleBasedRedirect />} />
       <Route path="*" element={<Navigate to="/signin" replace />} />
     </Routes>

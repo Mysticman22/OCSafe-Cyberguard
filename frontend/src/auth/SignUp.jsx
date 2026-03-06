@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { registerUser } from '../api/auth';
+import { Link, useNavigate } from 'react-router-dom';
+import { registerUser, loginUser, saveToken, getCurrentUser } from '../api/auth';
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -13,6 +13,7 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
 
   const update = (field, value) => {
@@ -27,8 +28,8 @@ export default function SignUp() {
       setError('Please enter your full name.');
       return;
     }
-    if (!form.email.endsWith('@gmail.com')) {
-      setError('Email must be a valid @gmail.com address.');
+    if (!form.email.includes('@') || form.email.length < 5) {
+      setError('Please enter a valid email address.');
       return;
     }
 
@@ -50,7 +51,15 @@ export default function SignUp() {
         password: form.password,
         organization_id: null,
       });
-      setSuccess(true);
+      // Auto-login after registration
+      const loginData = await loginUser(form.email, form.password);
+      saveToken(loginData.access_token);
+      const user = await getCurrentUser();
+      if (user?.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/user/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

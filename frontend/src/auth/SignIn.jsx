@@ -19,9 +19,8 @@ export default function SignIn() {
       return;
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      setError('Password requires 8+ characters with uppercase, lowercase, number, and special character.');
+    if (!password) {
+      setError('Please enter your password.');
       return;
     }
 
@@ -32,15 +31,13 @@ export default function SignIn() {
       setSuccess(true);
       // Fetch user role and redirect accordingly
       const user = await getCurrentUser();
-      setTimeout(() => {
-        if (user && user.role === 'admin') {
-          window.location.href = '/admin/dashboard';
-        } else {
-          window.location.href = '/user/dashboard';
-        }
-      }, 2000);
+      if (user && user.role === 'admin') {
+        window.location.href = '/admin/dashboard';
+      } else {
+        window.location.href = '/user/dashboard';
+      }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please try again.');
+      setError(err.message || 'Incorrect email or password.');
     } finally {
       setLoading(false);
     }
