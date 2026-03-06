@@ -90,14 +90,24 @@ async def register_user(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Register a standard user. User must provide an organization_id.
+    Register a standard user.
+    If no organization_id is provided, auto-assign to the default org or create one.
     """
     result = await db.execute(select(User).where(User.email == user_in.email))
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Email already registered")
-        
-    if not user_in.organization_id:
-        raise HTTPException(status_code=400, detail="Standard users must belong to an organization")
+    
+    # Auto-assign organization if not provided
+    org_id = user_in.organization_id
+    if not org_id:
+        # Use the first existing org, or create a default one
+        org_result = await db.execute(select(Organization).limit(1))
+        org = org_result.scalars().first()
+        if not org:
+            org = Organization(name="Default Organization")
+            db.add(org)
+            await db.flush()
+        org_id = org.id
         
     user_in.role = "user"
     hashed_password = security.get_password_hash(user_in.password)
@@ -105,7 +115,7 @@ async def register_user(
         email=user_in.email,
         hashed_password=hashed_password,
         role=user_in.role,
-        organization_id=user_in.organization_id
+        organization_id=org_id
     )
     db.add(db_user)
     await db.commit()
