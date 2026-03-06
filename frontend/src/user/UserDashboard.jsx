@@ -1,28 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '../shared/utils';
+import { getLatestTelemetry, getCurrentUser } from '../api/auth';
 
 export default function UserDashboard() {
-  const [healthScore, setHealthScore] = useState(94);
+  const [healthScore, setHealthScore] = useState(null);
+  const [telemetry, setTelemetry] = useState(null);
+  const [userName, setUserName] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isAnalyzingScore, setIsAnalyzingScore] = useState(false);
   const [scanHistory, setScanHistory] = useState([]);
   const [scoreReport, setScoreReport] = useState(null);
   const [scanReport, setScanReport] = useState(null);
-  const [firewallEnabled, setFirewallEnabled] = useState(true);
-  const [usbEnabled, setUsbEnabled] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [analyzingLogId, setAnalyzingLogId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user info and telemetry
+  useEffect(() => {
+    async function fetchAll() {
+      try {
+        const [user, telem] = await Promise.all([
+          getCurrentUser(),
+          getLatestTelemetry(1),
+        ]);
+        if (user) setUserName(user.email?.split('@')[0] || 'User');
+        if (telem.data) {
+          setTelemetry(telem.data);
+          // Calculate health score from real data
+          const sys = telem.data.system || {};
+          const sec = telem.data.security || {};
+          const proc = telem.data.processes || {};
+          let score = 100;
+          if (sec.firewall_enabled === false) score -= 20;
+          if (sec.antivirus_enabled === false) score -= 20;
+          if ((sec.windows_update_pending || 0) > 3) score -= 10;
+          if ((proc.suspicious || []).length > 0) score -= 15 * (proc.suspicious || []).length;
+          if ((sys.disk_percent || 0) > 90) score -= 10;
+          if ((sys.cpu_percent || 0) > 90) score -= 5;
+          setHealthScore(Math.max(0, Math.min(100, score)));
+        } else {
+          setHealthScore(0);
+        }
+      } catch (e) {
+        console.error('Dashboard fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // SVG gauge calculations
+  const displayScore = healthScore ?? 0;
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (healthScore / 100) * circumference;
+  const offset = circumference - (displayScore / 100) * circumference;
+
+  const firewallEnabled = telemetry?.security?.firewall_enabled ?? false;
+  const avEnabled = telemetry?.security?.antivirus_enabled ?? false;
 
   const handleAnalyzeScore = () => {
     setIsAnalyzingScore(true);
     setTimeout(() => {
       setIsAnalyzingScore(false);
-      setScoreReport(`AI Health Analysis: Your system scored ${healthScore}/100. All core defenses are active. Firewall is ${firewallEnabled ? 'enabled' : 'disabled'}. USB monitoring is ${usbEnabled ? 'active' : 'inactive'}. No critical vulnerabilities detected in the last 24 hours. Recommendation: ${healthScore >= 90 ? 'Maintain current security posture.' : 'Run a full system scan to improve your score.'}`);
+      const sec = telemetry?.security || {};
+      const sys = telemetry?.system || {};
+      const proc = telemetry?.processes || {};
+      setScoreReport(
+        `AI Health Analysis: Your system scored ${displayScore}/100. ` +
+        `Firewall is ${sec.firewall_enabled ? 'enabled' : 'DISABLED'}. ` +
+        `Antivirus (${sec.antivirus_name || 'Unknown'}) is ${sec.antivirus_enabled ? 'active' : 'INACTIVE'}. ` +
+        `${sec.windows_update_pending || 0} pending Windows updates. ` +
+        `CPU: ${sys.cpu_percent || 0}%, RAM: ${sys.ram_percent || 0}%, Disk: ${sys.disk_percent || 0}%. ` +
+        `${(proc.suspicious || []).length} suspicious processes detected. ` +
+        `Recommendation: ${displayScore >= 90 ? 'Maintain current security posture.' : 'Address flagged issues to improve your score.'}`
+      );
     }, 2000);
   };
 
@@ -30,19 +82,27 @@ export default function UserDashboard() {
     if (isScanning) return;
     setIsScanning(true);
     setTimeout(() => {
-      const newScore = Math.floor(Math.random() * 11) + 90; // 90-100
-      setHealthScore(newScore);
+      const proc = telemetry?.processes || {};
+      const net = telemetry?.network || {};
       const scan = {
         id: Date.now(),
         title: 'Quick System Scan',
         time: new Date().toLocaleString(),
-        status: 'Clean',
-        report: `Scan Complete — Score: ${newScore}/100. Analyzed 2,847 system processes, 127 installed applications, and 14 active network connections. No threats detected. All endpoints verified. Firewall rules validated. System integrity confirmed.`
+        status: (proc.suspicious || []).length === 0 ? 'Clean' : 'Threats Found',
+        report: `Scan Complete - Score: ${displayScore}/100. Analyzed ${proc.total_count || 0} system processes, ${net.active_connections || 0} active connections, and ${(net.open_ports || []).length} open ports. ${(proc.suspicious || []).length === 0 ? 'No threats detected.' : `${(proc.suspicious || []).length} suspicious processes flagged.`} Firewall: ${firewallEnabled ? 'Active' : 'DISABLED'}. AV: ${avEnabled ? 'Active' : 'DISABLED'}.`
       };
       setScanHistory(prev => [scan, ...prev]);
       setIsScanning(false);
     }, 3000);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -54,8 +114,13 @@ export default function UserDashboard() {
             Welcome back,
           </h1>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-            Guest
+            {userName || 'User'}
           </h1>
+          {telemetry?.system && (
+            <p className="text-sm text-gray-400 mt-2 font-medium">
+              {telemetry.system.hostname} &middot; {telemetry.system.os_name}
+            </p>
+          )}
         </div>
 
         {/* SVG Health Gauge */}
@@ -69,7 +134,8 @@ export default function UserDashboard() {
             {!isAnalyzingScore && (
               <circle
                 cx="70" cy="70" r={radius} fill="none"
-                stroke="#9333ea" strokeWidth="8" strokeLinecap="round"
+                stroke={displayScore >= 80 ? '#9333ea' : displayScore >= 50 ? '#f59e0b' : '#ef4444'}
+                strokeWidth="8" strokeLinecap="round"
                 strokeDasharray={circumference}
                 strokeDashoffset={offset}
                 className="transition-all duration-1000"
@@ -90,13 +156,17 @@ export default function UserDashboard() {
               <div className="w-6 h-6 border-3 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
-                <span className="text-3xl font-black text-slate-900 dark:text-white">{healthScore}</span>
-                <span className="text-[10px] font-bold tracking-widest text-purple-600 uppercase">Healthy</span>
+                <span className="text-3xl font-black text-slate-900 dark:text-white">{displayScore}</span>
+                <span className={cn("text-[10px] font-bold tracking-widest uppercase",
+                  displayScore >= 80 ? "text-purple-600" : displayScore >= 50 ? "text-amber-500" : "text-red-500"
+                )}>
+                  {displayScore >= 80 ? 'Healthy' : displayScore >= 50 ? 'Warning' : 'Critical'}
+                </span>
               </>
             )}
           </div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg">
-            Analyze ✨
+            Analyze
           </div>
         </div>
       </div>
@@ -148,19 +218,21 @@ export default function UserDashboard() {
             <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-500/10 flex items-center justify-center text-green-600">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path strokeLinecap="round" d="M8 21h8M12 17v4"/></svg>
             </div>
-            <span className={cn("text-[11px] font-bold uppercase tracking-wider", (firewallEnabled || usbEnabled) ? "text-green-500" : "text-gray-400")}>
-              {(firewallEnabled || usbEnabled) ? 'Active' : 'Inactive'}
+            <span className={cn("text-[11px] font-bold uppercase tracking-wider",
+              (firewallEnabled && avEnabled) ? "text-green-500" : "text-orange-500"
+            )}>
+              {(firewallEnabled && avEnabled) ? 'Active' : 'Warning'}
             </span>
           </div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Endpoint Security</h3>
           <div className="space-y-3 mt-auto">
             <div className="flex items-center gap-2">
-              <svg className={cn("w-4 h-4", firewallEnabled ? "text-green-500" : "text-gray-300")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Firewall: <span className={cn("font-bold", firewallEnabled ? "text-green-500" : "text-gray-400")}>{firewallEnabled ? 'ON' : 'OFF'}</span></span>
+              <svg className={cn("w-4 h-4", firewallEnabled ? "text-green-500" : "text-red-500")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Firewall: <span className={cn("font-bold", firewallEnabled ? "text-green-500" : "text-red-500")}>{firewallEnabled ? 'ON' : 'OFF'}</span></span>
             </div>
             <div className="flex items-center gap-2">
-              <svg className={cn("w-4 h-4", usbEnabled ? "text-green-500" : "text-gray-300")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">USB: <span className={cn("font-bold", usbEnabled ? "text-green-500" : "text-gray-400")}>{usbEnabled ? 'ON' : 'OFF'}</span></span>
+              <svg className={cn("w-4 h-4", avEnabled ? "text-green-500" : "text-red-500")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">AV: <span className={cn("font-bold", avEnabled ? "text-green-500" : "text-red-500")}>{telemetry?.security?.antivirus_name || (avEnabled ? 'ON' : 'OFF')}</span></span>
             </div>
           </div>
         </div>
@@ -173,8 +245,16 @@ export default function UserDashboard() {
             </div>
             <span className="text-[11px] font-bold text-green-500 uppercase tracking-wider">Secured</span>
           </div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Network Security</h3>
-          <p className="text-sm text-gray-400 font-medium mt-auto">Traffic encrypted via AI-powered gateway. All connections verified.</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Network</h3>
+          {telemetry?.network ? (
+            <div className="space-y-2 mt-auto">
+              <p className="text-sm text-gray-500 font-medium">{telemetry.network.active_connections} active connections</p>
+              <p className="text-sm text-gray-500 font-medium">{(telemetry.network.open_ports || []).length} open ports</p>
+              <p className="text-sm text-gray-500 font-medium">{telemetry.network.bytes_sent_mb} MB sent / {telemetry.network.bytes_recv_mb} MB received</p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 font-medium mt-auto">Traffic encrypted via AI-powered gateway. All connections verified.</p>
+          )}
         </div>
       </div>
 
@@ -184,7 +264,7 @@ export default function UserDashboard() {
           <button onClick={() => setScoreReport(null)} className="absolute top-4 right-4 text-purple-400 hover:text-purple-600 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
-          <h4 className="font-bold text-purple-700 dark:text-purple-400 mb-2 text-sm">🔮 AI Health Analysis</h4>
+          <h4 className="font-bold text-purple-700 dark:text-purple-400 mb-2 text-sm">AI Health Analysis</h4>
           <p className="text-sm text-purple-600 dark:text-purple-300 font-medium leading-relaxed">{scoreReport}</p>
         </div>
       )}
@@ -204,7 +284,9 @@ export default function UserDashboard() {
             {scanHistory.map((scan) => (
               <div key={scan.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-500/10 flex items-center justify-center text-green-500">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center",
+                    scan.status === 'Clean' ? "bg-green-50 dark:bg-green-500/10 text-green-500" : "bg-red-50 dark:bg-red-500/10 text-red-500"
+                  )}>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   </div>
                   <div>
@@ -213,7 +295,9 @@ export default function UserDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-bold text-green-500 bg-green-50 dark:bg-green-500/10 px-3 py-1 rounded-full">{scan.status}</span>
+                  <span className={cn("text-[11px] font-bold px-3 py-1 rounded-full",
+                    scan.status === 'Clean' ? "text-green-500 bg-green-50 dark:bg-green-500/10" : "text-red-500 bg-red-50 dark:bg-red-500/10"
+                  )}>{scan.status}</span>
                   <button
                     onClick={() => setScanReport(scan.report)}
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 transition-colors"
@@ -227,23 +311,37 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* 5. Threat Intelligence Logs */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Threat Intelligence</h3>
-          <button className="text-xs font-bold text-purple-600 hover:text-purple-700 px-4 py-2 bg-purple-50 dark:bg-purple-500/10 rounded-xl transition-colors">
-            Export PDF
-          </button>
-        </div>
-
-        {logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-300 dark:text-gray-600">
-            <svg className="w-16 h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
-            <p className="font-bold text-gray-400 dark:text-gray-500">No Threats Detected</p>
-            <p className="text-sm text-gray-400 dark:text-gray-600 mt-1">Your system is secure.</p>
+      {/* 5. Suspicious Processes */}
+      {telemetry?.processes?.suspicious?.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-500/20 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-red-600">Suspicious Processes</h3>
+            <span className="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-500/10 px-3 py-1 rounded-full">
+              {telemetry.processes.suspicious.length} found
+            </span>
           </div>
-        ) : null}
-      </div>
+          <div className="space-y-2">
+            {telemetry.processes.suspicious.map((proc, i) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-red-50/50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10">
+                <div>
+                  <p className="font-bold text-sm text-red-700 dark:text-red-400">{proc.name}</p>
+                  <p className="text-xs text-red-500">PID: {proc.pid} | {proc.reason}</p>
+                </div>
+                <span className="text-xs text-red-500 font-bold">CPU: {proc.cpu}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No Agent Warning */}
+      {!telemetry && (
+        <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-2xl p-6 text-center">
+          <p className="text-sm text-purple-600 dark:text-purple-300 font-medium">
+            No telemetry data available. Install the OCSafe Agent on this device to see real-time security data.
+          </p>
+        </div>
+      )}
 
       {/* Scan Report Modal */}
       {scanReport && (
@@ -253,7 +351,7 @@ export default function UserDashboard() {
             <button onClick={() => setScanReport(null)} className="absolute top-4 right-4 text-gray-400 hover:text-slate-900 dark:hover:text-white">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">📋 Scan Report</h3>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Scan Report</h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed">{scanReport}</p>
           </div>
         </div>
