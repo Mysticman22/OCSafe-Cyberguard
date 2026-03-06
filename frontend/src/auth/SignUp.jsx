@@ -6,8 +6,6 @@ export default function SignUp() {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
-    department: '',
-    position: '',
     password: '',
     confirmPassword: '',
   });
@@ -16,22 +14,9 @@ export default function SignUp() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const departments = ['Engineering', 'Security Operations', 'IT Administration', 'Management', 'Human Resources', 'Finance'];
-  const positions = {
-    'Engineering': ['Software Engineer', 'DevOps Engineer', 'QA Engineer', 'Lead Engineer'],
-    'Security Operations': ['SOC Analyst', 'Threat Hunter', 'Incident Responder', 'Security Lead'],
-    'IT Administration': ['System Admin', 'Network Admin', 'Database Admin', 'IT Manager'],
-    'Management': ['Director', 'VP of Engineering', 'CTO', 'CISO'],
-    'Human Resources': ['HR Manager', 'Recruiter', 'HR Lead'],
-    'Finance': ['Finance Manager', 'Accountant', 'CFO'],
-  };
 
   const update = (field, value) => {
-    setForm(prev => {
-      const next = { ...prev, [field]: value };
-      if (field === 'department') next.position = '';
-      return next;
-    });
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSignUp = async (e) => {
@@ -46,14 +31,7 @@ export default function SignUp() {
       setError('Email must be a valid @gmail.com address.');
       return;
     }
-    if (!form.department) {
-      setError('Please select your department.');
-      return;
-    }
-    if (!form.position) {
-      setError('Please select your position.');
-      return;
-    }
+
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(form.password)) {
@@ -203,32 +181,7 @@ export default function SignUp() {
                 />
               </div>
 
-              {/* Department & Position (side by side) */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-300">Department</label>
-                  <select
-                    value={form.department}
-                    onChange={(e) => update('department', e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium appearance-none"
-                  >
-                    <option value="" className="text-gray-500">Select...</option>
-                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-300">Position</label>
-                  <select
-                    value={form.position}
-                    onChange={(e) => update('position', e.target.value)}
-                    disabled={!form.department}
-                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium disabled:opacity-50 appearance-none"
-                  >
-                    <option value="" className="text-gray-500">Select...</option>
-                    {(positions[form.department] || []).map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-              </div>
+
 
               {/* Password */}
               <div className="space-y-2">

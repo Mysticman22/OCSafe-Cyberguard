@@ -77,45 +77,34 @@ export default function SignIn() {
       </div>
 
       {/* Left Branding Panel */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative p-16">
-        <div className="max-w-lg relative z-10">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-14 h-14 bg-brand-purple rounded-2xl flex items-center justify-center shadow-lg shadow-brand-purple/30">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative p-12">
+        <div className="max-w-md relative z-10">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-11 h-11 bg-brand-purple rounded-xl flex items-center justify-center shadow-lg shadow-brand-purple/30">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight">OCsafe</h1>
-              <p className="text-brand-purple-light text-sm font-bold tracking-widest uppercase">Cyberguard Pro</p>
+              <h1 className="text-2xl font-black tracking-tight">OCsafe</h1>
+              <p className="text-brand-purple-light text-xs font-bold tracking-widest uppercase">Cyberguard Pro</p>
             </div>
           </div>
-          <h2 className="text-5xl font-black leading-tight mb-6 tracking-tight">
+          <h2 className="text-3xl font-black leading-tight mb-4 tracking-tight">
             Enterprise<br />
             <span className="text-brand-purple-light">Endpoint Security</span><br />
             Redefined.
           </h2>
-          <p className="text-gray-400 text-lg font-medium leading-relaxed mb-10">
+          <p className="text-gray-400 text-sm font-medium leading-relaxed">
             Real-time threat detection, on-device analysis, and centralized fleet management for your entire organization.
           </p>
-          <div className="flex gap-8">
-            {[
-              { val: '99.99%', label: 'Uptime' },
-              { val: '<50ms', label: 'Response' },
-              { val: '10K+', label: 'Devices' },
-            ].map(s => (
-              <div key={s.label}>
-                <p className="text-2xl font-black text-white">{s.val}</p>
-                <p className="text-xs text-gray-500 font-bold tracking-wider uppercase mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
+
         </div>
       </div>
 
       {/* Right Form Panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative z-10">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 relative z-10">
+        <div className="w-full max-w-sm">
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-10 justify-center">
@@ -127,31 +116,31 @@ export default function SignIn() {
             <span className="text-2xl font-black">OCsafe</span>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-[2rem] p-10 shadow-2xl">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold tracking-tight">Welcome back</h3>
-              <p className="text-gray-400 mt-2 text-sm font-medium">Sign in to access your security dashboard.</p>
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
+            <div className="mb-5">
+              <h3 className="text-lg font-bold tracking-tight">Welcome back</h3>
+              <p className="text-gray-400 mt-1 text-xs font-medium">Sign in to access your security dashboard.</p>
             </div>
 
-            <form onSubmit={handleSignIn} className="space-y-5">
+            <form onSubmit={handleSignIn} className="space-y-4">
               {/* Email */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-300">Email Address</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-300">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@gmail.com"
-                  className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-5 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium"
+                  className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium"
                   required
                 />
               </div>
 
               {/* Password */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-bold text-gray-300">Password</label>
-                  <button type="button" className="text-xs text-brand-purple-light hover:text-brand-purple font-bold transition-colors">
+                  <label className="text-xs font-bold text-gray-300">Password</label>
+                  <button type="button" className="text-[10px] text-brand-purple-light hover:text-brand-purple font-bold transition-colors">
                     Forgot password?
                   </button>
                 </div>
@@ -161,7 +150,7 @@ export default function SignIn() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-5 py-3.5 pr-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium"
+                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm pr-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-purple/60 focus:border-brand-purple transition-all font-medium"
                     required
                   />
                   <button
@@ -190,14 +179,14 @@ export default function SignIn() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-brand-purple hover:bg-brand-purple-dark text-white font-bold rounded-xl shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-brand-purple/30 mt-1 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
                 {loading ? 'Authenticating...' : 'Sign In'}
               </button>
             </form>
 
             {/* Divider */}
-            <div className="flex items-center gap-4 my-8">
+            <div className="flex items-center gap-4 my-6">
               <div className="flex-1 h-px bg-slate-800"></div>
               <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">or</span>
               <div className="flex-1 h-px bg-slate-800"></div>
