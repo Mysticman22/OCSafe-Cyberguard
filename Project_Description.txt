@@ -1,0 +1,104 @@
+================================================================================
+OCSAFE CYBERGUARD - PROJECT OVERVIEW & FEATURE LIST
+================================================================================
+
+PROJECT DESCRIPTION:
+--------------------
+OCSafe Cyberguard is a Next-Gen Enterprise Endpoint Intelligence and Security 
+Platform. It is designed to act as a centralized fleet management system that 
+monitors, analyzes, and secures organizational devices in real-time. 
+
+Unlike traditional passive dashboards, OCSafe operates through a lightweight, 
+custom-built OS Agent deployed on endpoint machines. This agent continuously 
+streams telemetry to a central backend where a Threat Engine evaluates the data 
+against security rules. Administrators gain instant, org-wide visibility into 
+device health, network activity, and active threats, while standard users can 
+monitor their own machine's security posture.
+
+This system was built with a focus on real-time data streaming, robust security 
+monitoring, and a premium "dark-mode" SaaS aesthetic.
+
+
+TECHNOLOGY STACK:
+-----------------
+1. Frontend (Web Application):
+   - React.js (Component-based UI library)
+   - Vite (Next-generation frontend tooling & bundler)
+   - Tailwind CSS (Utility-first CSS framework for styling)
+   - React Router DOM (Client-side routing)
+   - Lucide React (Iconography)
+
+2. Backend (REST API):
+   - FastAPI (High-performance asynchronous Python web framework)
+   - SQLAlchemy (ORM for database interactions)
+   - PostgreSQL (Relational database for storing users, orgs, and telemetry)
+   - JWT (JSON Web Tokens) & bcrypt (Authentication and password hashing)
+
+3. On-Device OS Agent:
+   - Python 3.x (Core agent logic)
+   - psutil (Cross-platform system monitoring: CPU, RAM, Disk, Network)
+   - WMI (Windows Management Instrumentation for checking Firewall/Antivirus)
+   - schedule (Job scheduling for periodic data collection)
+   - PyInstaller (Packaging the agent into a distributable standalone .exe)
+
+
+================================================================================
+CURRENTLY IMPLEMENTED FUNCTIONS & FEATURES
+================================================================================
+
+1. PREMIUM LANDING PAGE & AUTHENTICATION
+----------------------------------------
+- Premium Dark-Theme Landing Page: Glowing elements, abstract dashboard preview.
+- End-to-End Registration: Users can sign up and are automatically assigned to
+  their organization's workspace.
+- Seamless Auto-Login: Successful registration auto-generates JWT tokens and 
+  bypasses the login screen.
+- Role-Based Access Control (RBAC): System distinguishes between "Admin" and 
+  "User" roles, routing them to isolated dashboard experiences.
+
+2. LIGHTWEIGHT PYTHON OS AGENT (OCSafeAgent.exe)
+-------------------------------------------------
+- Silent Background Execution: Designed to run without disrupting the user.
+- System Collector: Tracks real-time CPU percentage, RAM usage, Disk space 
+  availability, and OS uptime.
+- Security Collector: Interfaces with Windows Security Center (WMI) to verify 
+  if Windows Firewall and Antivirus are active, and checks for pending OS updates.
+- Process Collector: Scans all running executables. Identifies resource hogs 
+  and flags known malicious software (e.g., mimikatz, wannacry).
+- Network Collector: Monitors active TCP/UDP connections, open listening ports, 
+  network interface status, and live bandwidth usage (bytes sent/received).
+- Telemetry Transmitter: Packages collected data into JSON and POSTs it to the 
+  central server every 30 seconds via authenticated API keys.
+
+3. CENTRALIZED BACKEND & THREAT ENGINE
+--------------------------------------
+- Telemetry Ingestion API: Securely receives and stores agent data in PostgreSQL.
+- Device Heartbeat: Tracks when devices go offline or stop reporting.
+- Rule-Based Threat Engine: Automatically analyzes incoming telemetry:
+    * Flags if Firewall or Antivirus is disabled.
+    * Flags if CPU spikes abnormally (potential cryptojacking).
+    * Flags dangerous open ports (e.g., Telnet, RDP exposed).
+    * Identifies active blacklisted executables.
+
+4. SUPER ADMIN DASHBOARD
+------------------------
+- Org-Wide Health Score: Dynamically calculates the overall organizational 
+  security posture based on fleet data.
+- Fleet Telemetry Matrix: Real-time table displaying every connected device, 
+  its owner, OS, and live CPU/RAM stats.
+- Active Threat Center: Auto-populates with vulnerabilities detected by the 
+  Threat Engine across the entire network.
+- User Management: Displays all provisioned users, their roles, join dates, 
+  and links them to their enrolled devices.
+
+5. INDIVIDUAL USER DASHBOARD
+----------------------------
+- Personal Security Scorecard: Gives employees visibility into their own 
+  machine's compliance (Firewall, AV, Updates).
+- Live Performance Metrics: Auto-refreshing graphs/stats for local CPU, Memory, 
+  and Disk health.
+- Network Topography: Shows the user their active connections and exposed ports.
+
+================================================================================
+PROJECT STATUS: Fully functional, real-time end-to-end telemetry system.
+================================================================================
