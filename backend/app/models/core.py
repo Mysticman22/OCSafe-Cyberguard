@@ -85,3 +85,19 @@ class AuditLog(Base):
     
     organization = relationship("Organization")
     user = relationship("User")
+
+class TelemetryLog(Base):
+    """
+    Stores telemetry data sent by OS Agents.
+    Replaces MongoDB — all telemetry stored in PostgreSQL.
+    """
+    __tablename__ = "telemetry_log"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("device.id"), index=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), index=True)
+    payload = Column(JSON)  # Full telemetry payload (system, security, processes, network)
+    threat_evaluation = Column(JSON, nullable=True)  # Threat engine results
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    device = relationship("Device")
+    organization = relationship("Organization")

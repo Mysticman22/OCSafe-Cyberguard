@@ -164,3 +164,23 @@ export async function getAuditLogs() {
     if (!res || !res.ok) return [];
     return await res.json();
 }
+
+// ─── Telemetry API ───────────────────────────────────
+
+export async function getLatestTelemetry(deviceId) {
+    const res = await authFetch(`${API_BASE}/telemetry/latest/${deviceId}`);
+    if (!res || !res.ok) return { data: null };
+    return await res.json();
+}
+
+export async function getTelemetryHistory(deviceId, hours = 24) {
+    const res = await authFetch(`${API_BASE}/telemetry/history/${deviceId}?hours=${hours}`);
+    if (!res || !res.ok) return { data: [] };
+    return await res.json();
+}
+
+export async function getOrgTelemetrySummary() {
+    const res = await authFetch(`${API_BASE}/telemetry/summary`);
+    if (!res || !res.ok) return { devices: [], total: 0 };
+    return await res.json();
+}
